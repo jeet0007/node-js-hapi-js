@@ -6,7 +6,7 @@
   "author": "Jeet0007",
   "license": "MIT",
   "scripts": {
-    "start": "nodemon index.js"
+    "start": "nodemon -e html,js index.js"
   },
   "dependencies": {
     "@hapi/hapi": "^20.0.0",

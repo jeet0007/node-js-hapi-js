@@ -1,3 +1,5 @@
+var fs = require('fs');
+
 
 async function convertToObject(apiData) {
     let dataArray = []
@@ -33,10 +35,13 @@ async function mapChildren(apiData) {
 }
 
 
-const Organizer = async (data) => {
-    const cleanedData = await convertToObject(data);
+const Organizer = async (fileName) => {
+    var datafile = JSON.parse(fs.readFileSync(fileName, 'utf8'));
+    const cleanedData = await convertToObject(datafile);
     const ans = await mapChildren(cleanedData)
-    return ans
+    const outputFilepath = fileName.replace('uploads', 'outputs')
+    fs.writeFileSync(outputFilepath, JSON.stringify(ans))
+    return { filename: outputFilepath, data: ans }
 }
 
 exports.organise = Organizer

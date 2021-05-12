@@ -1,5 +1,4 @@
 'use strict';
-
 const Hapi = require('@hapi/hapi');
 const Inert = require("@hapi/inert");
 const Vision = require('@hapi/vision');
@@ -8,6 +7,7 @@ const path = require('path')
 const Pack = require('./package');
 const Joi = require('joi');
 const Organizer = require('./services/json-org.service');
+const fs = require('fs')
 const swaggerOptions = {
     info: {
         title: 'JSON Organizer API Documentation',
@@ -40,13 +40,6 @@ const init = async () => {
         plugin: HapiSwagger,
         option: swaggerOptions
     }])
-    server.views({
-        engines: {
-            html: require('handlebars')
-        },
-        path: path.join(__dirname, 'views')
-
-    })
 
     //declare routes
     server.route([{
@@ -54,22 +47,26 @@ const init = async () => {
         path: "/",
 
         handler: (request, h) => {
-            return h.file('./static/welcome.html')
+            return h.file('welcome.html')
         }
     },
     {
         method: "POST",
         path: "/json",
         options: {
-            handler: async (request, h) => {
-                const ans = Organizer.organise(request.payload.json)
-                console.log(ans);
-                return `<pre> ${await ans} </pre>`
+            tags: ['api'],
+            description: 'Upload Json file',
+            notes: 'Returns a organized Json doccument. Takes in an Json input',
+            payload: {
+                output: 'file',
+                parse: true,
+                multipart: true
             },
             validate: {
                 payload: Joi.object({
-                    json: Joi.string()
-                        .required()
+                    file: Joi.any()
+                        .meta({ swaggerType: 'file' })
+                        .description('json file')
                 })
             },
             plugins: {
@@ -77,9 +74,23 @@ const init = async () => {
                     payloadType: 'form'
                 }
             },
-            tags: ['api'],
-            description: 'Get Json Result',
-            notes: 'Returns a organized Json doccument. Takes in an Json input'
+            handler: async (request, h) => {
+                return new Promise((resolve, reject) => {
+                    const data = request.payload;
+                    if (data.file) {
+                        const name = data.file.filename;
+                        const fileName = path.join(__dirname, 'static/uploads/' + name);
+                        const outputFile = fs.createWriteStream(fileName); // create new file
+                        const readFile = fs.createReadStream(data.file.path) // read data 
+                        outputFile.on('error', (err) => console.error(err));
+                        readFile.pipe(outputFile)
+                            .on('finish', () => {
+                                console.log(`finished parsing file ${fileName}`);
+                                resolve(Organizer.organise(fileName))
+                            });
+                    }
+                });
+            },
         },
     }
     ])
